@@ -16,56 +16,71 @@ def df_costos_por_item(pedimento):
 
         for fr in pedimento.fracciones:
 
+            # -----------------------------------------
             # Contribuciones válidas
+            # -----------------------------------------
             contribuciones_validas = [
                 c for c in fr.contribuciones if float(c.tipo_de_tasa) != 0
             ]
             total_contribuciones = sum(float(c.importe) for c in contribuciones_validas)
 
-            # ================================
+            # -----------------------------------------
             # AGRUPAR ITEMS POR item_number
-            # ================================
+            # -----------------------------------------
             items_agrupados = {}
 
             for it in fr.items:
                 key = it.item_number
+
+                # Valor aduana REAL del item
+                # Si viene vacío, usar total del item o fallback
+                valor_aduana_item = float(it.total) if it.total > 0 else None
+
                 if key not in items_agrupados:
                     items_agrupados[key] = {
                         "cantidad": 0.0,
+                        "valor_aduana_item": valor_aduana_item,
                     }
+
                 items_agrupados[key]["cantidad"] += float(it.cantidad)
 
-            # ========================================
-            # PRORRATEAR DTA POR CANTIDAD TOTAL DE LA FRACCIÓN
-            # ========================================
+                # Si el item trae valor aduana válido, conservarlo
+                if valor_aduana_item is not None:
+                    items_agrupados[key]["valor_aduana_item"] = valor_aduana_item
+
+            # -----------------------------------------
+            # PRORRATEO DTA
+            # -----------------------------------------
             cantidad_total_fr = sum(float(it.cantidad) for it in fr.items)
             dta_total = float(fr.dta)
+            dta_unitario = dta_total / cantidad_total_fr if cantidad_total_fr > 0 else 0
 
-            dta_unitario = (dta_total / cantidad_total_fr) if cantidad_total_fr > 0 else 0
-
-            # ========================================
-            # GENERAR UNA SOLA LÍNEA POR ITEM
-            # ========================================
+            # -----------------------------------------
+            # CREAR UNA SOLA LÍNEA POR ITEM
+            # -----------------------------------------
             for item_number, data in items_agrupados.items():
 
                 cantidad_item = data["cantidad"]
 
-                # DTA prorrateado para este item
+                # valor_aduana del item (si existe)
+                if data["valor_aduana_item"] is not None:
+                    valor_aduana = data["valor_aduana_item"]
+                else:
+                    # si no existe, prorratear el valor_aduana de la fracción
+                    valor_aduana = float(fr.valor_aduana) / cantidad_total_fr * cantidad_item
+
+                # calcular DTA proporcional
                 dta_item = dta_unitario * cantidad_item
 
-                # Costo total del item = Aduana + Contribuciones + DTA proporcional
-                costo_total_item = (
-                    float(fr.valor_aduana)
-                    + total_contribuciones
-                    + dta_item
-                )
+                # costo total real del item
+                costo_total_item = valor_aduana + total_contribuciones + dta_item
 
                 costo_unitario = costo_total_item / cantidad_item if cantidad_item > 0 else 0
 
                 rows.append({
                     "item_number": item_number,
                     "cantidad": cantidad_item,
-                    "valor_aduana": float(fr.valor_aduana),
+                    "valor_aduana": valor_aduana,
                     "contribuciones_validas": total_contribuciones,
                     "dta_prorrateado": dta_item,
                     "costo_total_item": costo_total_item,

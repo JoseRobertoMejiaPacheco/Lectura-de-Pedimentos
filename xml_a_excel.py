@@ -23,6 +23,8 @@ import pandas as pd
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
+from PedimentoBuilder.builder import get
+
 
 # ============================================================
 # 🔹 UTILIDADES
@@ -102,11 +104,10 @@ def extraer_facturas(root):
 
 
 def extraer_fracciones(root):
-    """Extrae las fracciones y los items detallados."""
     fracs = []
     items_det = []
 
-    for fr in root.findall("Fracciones/Fraccion"):
+    for fr in root.iter("Fraccion"):
         valor_aduana = float(find_text(fr, "ValorAduana") or 0)
         valor_dolares = float(find_text(fr, "ValorDolares") or 0)
         num_frac = find_text(fr, "NumeroFraccion")
@@ -114,17 +115,21 @@ def extraer_fracciones(root):
         cantidad_fac = float(find_text(fr, "CantidadFactura") or 0)
         unidad_fac = find_text(fr, "UnidadFactura")
 
-        fracs.append({
-            "NumeroFraccion": num_frac,
-            "Descripcion": descripcion,
-            "CantidadFactura": cantidad_fac,
-            "UnidadFactura": unidad_fac,
-            "ValorAduana": valor_aduana,
-            "ValorDolares": valor_dolares,
-        })
+        if num_frac:
+            fracs.append({
+                "NumeroFraccion": num_frac,
+                "Descripcion": descripcion,
+                "CantidadFactura": cantidad_fac,
+                "UnidadFactura": unidad_fac,
+                "ValorAduana": valor_aduana,
+                "ValorDolares": valor_dolares,
+            })
 
-        # Items dentro de la fracción
-        for it in fr.findall("Items/Item"):
+        # Items dentro de fracción (en cualquier nivel)
+        for it in fr.iter("Item"):
+            if not get(it, "ItemNumber"):
+                continue
+
             cantidad_it = float(find_text(it, "Cantidad") or 0)
             precio_it = float(find_text(it, "PrecioUnitario") or 0)
             total_it = cantidad_it * precio_it
@@ -144,9 +149,7 @@ def extraer_fracciones(root):
                 "TotalItem": total_it,
             })
 
-    df_fracs = pd.DataFrame(fracs)
-    df_items = pd.DataFrame(items_det)
-    return df_fracs, df_items
+    return pd.DataFrame(fracs), pd.DataFrame(items_det)
 
 
 def extraer_impuestos_gastos(root):

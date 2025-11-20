@@ -1,143 +1,175 @@
-from datetime import datetime
-
-
-class Numeric:
-    @staticmethod
-    def f(value):
-        if value in (None, ""):
-            return 0.0
-        try:
-            return float(str(value).strip())
-        except:
-            return 0.0
-
-
-class DateUtil:
-    @staticmethod
-    def parse(value):
-        if not value:
-            return None
-        try:
-            return datetime.strptime(value, "%Y-%m-%d").date()
-        except:
-            return value
-
+# domain.py
 
 class Cliente:
-    def __init__(self, razon_social="", pais="", rfc=""):
-        self.razon_social = razon_social
-        self.pais = pais
-        self.rfc = rfc
-
-    def to_dict(self):
-        return {
-            "razon_social": self.razon_social,
-            "pais": self.pais,
-            "rfc": self.rfc,
-        }
+    def __init__(self):
+        self.razon_social = ""
+        self.curp = ""
+        self.rfc = ""
+        self.direccion = ""
+        self.numero_externo = ""
+        self.numero_interno = ""
+        self.colonia = ""
+        self.ciudad = ""
+        self.cp = ""
+        self.entidad = ""
+        self.nombre_entidad = ""
+        self.pais = ""
+        self.nombre_pais = ""
+        self.telefono1 = ""
+        self.telefono2 = ""
 
 
 class ProveedorComprador:
-    def __init__(self, razon_social="", pais="", rfc_tax_id=""):
-        self.razon_social = razon_social
-        self.pais = pais
-        self.rfc_tax_id = rfc_tax_id
-
-    def to_dict(self):
-        return {
-            "razon_social": self.razon_social,
-            "pais": self.pais,
-            "rfc_tax_id": self.rfc_tax_id,
-        }
+    def __init__(self):
+        self.cp = ""
+        self.pais = ""
+        self.razon_social = ""
+        self.rfc_tax_id = ""
+        self.direccion = ""
+        self.numero_interno = ""
+        self.numero_externo = ""
+        self.municipio_ciudad = ""
+        self.colonia = ""
+        self.telefono1 = ""
+        self.telefono2 = ""
+        self.entidad = ""
+        self.nombre_entidad = ""
 
 
 class Factura:
-    def __init__(self, folio="", proveedor=None):
-        self.folio = folio
-        self.proveedor = proveedor or ProveedorComprador()
-
-    def to_dict(self):
-        return {
-            "folio": self.folio,
-            "proveedor": self.proveedor.to_dict()
-        }
+    def __init__(self):
+        self.orden = ""
+        self.folio = ""
+        self.factor_monetario = ""
+        self.fecha = ""
+        self.incoterm = ""
+        self.moneda_factura = ""
+        self.observaciones = ""
+        self.pais_factura = ""
+        self.pais_factor_monetario = ""
+        self.pedido = ""
+        self.proveedor_comprador = ProveedorComprador()
+        self.valor_dolares = ""
+        self.valor_moneda_extranjera = ""
+        self.vinculacion = ""
+        self.valor_total = ""
+        self.subdivision = ""
+        self.es_certificado_origen = ""
+        self.numero_exportador_confiable = ""
+        self.edocument = ""
 
 
 class Contribucion:
-    def __init__(self, concepto_impuesto="", importe="0", tipo_de_tasa="0"):
-        self.concepto_impuesto = concepto_impuesto
-        self.importe = Numeric.f(importe)
-        self.tipo_de_tasa = Numeric.f(tipo_de_tasa)
+    def __init__(self):
+        self.forma_pago = ""
+        self.clave_impuesto = ""
+        self.concepto_impuesto = ""
+        self.importe = ""
+        self.tasa = ""
+        self.tipo_de_tasa = ""
 
-    def to_dict(self):
-        return {
-            "concepto_impuesto": self.concepto_impuesto,
-            "importe": self.importe,
-            "tipo_de_tasa": self.tipo_de_tasa,
-        }
+
+class Permiso:
+    def __init__(self):
+        self.permiso = ""
+        self.numero_permiso = ""
+        self.firma = ""
+        self.complemento_uno = ""
+        self.complemento_dos = ""
+        self.complemento_tres = ""
+        self.valor_dolares = ""
+        self.cantidad_umt = ""
+        self.tipo_de_permiso = ""
+
+
+class DescripcionEspecifica:
+    def __init__(self):
+        self.id = ""
+        self.id_item = ""
+        self.marca = ""
+        self.modelo = ""
+        self.serie = ""
+        self.dato_identificacion = ""
 
 
 class Item:
-    def __init__(self, item_number="", cantidad="0", total="0"):
-        self.item_number = item_number
-        self.cantidad = Numeric.f(cantidad)
-        self.total = Numeric.f(total)
-
-    def to_dict(self):
-        return {
-            "item_number": self.item_number,
-            "cantidad": self.cantidad,
-            "total": self.total,
-        }
+    def __init__(self):
+        self.orden = ""
+        self.origen = ""
+        self.factura = ""
+        self.item_number = ""
+        self.unidad_factura = ""
+        self.unidad_tarifa = ""
+        self.unidad_vu = ""
+        self.cantidad = ""
+        self.cantidad_tarifa = ""
+        self.cantidad_vu = ""
+        self.precio_unitario = ""
+        self.total = ""
+        self.fraccion = ""
+        self.nico = ""
+        self.descripciones = []  # lista de DescripcionEspecifica()
 
 
 class Fraccion:
-    def __init__(self, valor_aduana="0", dta="0"):
-        self.valor_aduana = Numeric.f(valor_aduana)
-        self.dta = Numeric.f(dta)
-        self.contribuciones = []
-        self.items = []
+    def __init__(self):
+        self.orden = ""
+        self.numero_fraccion = ""
+        self.nico = ""
+        self.subdivision = ""
+        self.cantidad_factura = ""
+        self.cantidad_tarifa = ""
+        self.descripcion = ""
+        self.dta = ""
+        self.metodo_valoracion = ""
+        self.pais_vendedor_comprador = ""
+        self.pais_origen_destino = ""
+        self.precio_unitario = ""
+        self.unidad_factura = ""
+        self.unidad_tarifa = ""
+        self.valor_agregado = ""
+        self.valor_aduana = ""
+        self.valor_dolares = ""
+        self.valor_moneda_facturacion = ""
+        self.importe_precio_pagado = ""
+        self.vinculacion = ""
+        self.observaciones = ""
 
-    def add_contribucion(self, contribucion):
-        self.contribuciones.append(contribucion)
+        self.contribuciones = []   # lista Contribucion()
+        self.permisos = []         # lista Permiso()
+        self.items = []            # lista Item()
 
-    def add_item(self, item):
-        self.items.append(item)
 
-    def to_dict(self):
-        return {
-            "valor_aduana": self.valor_aduana,
-            "dta": self.dta,
-            "contribuciones": [c.to_dict() for c in self.contribuciones],
-            "items": [i.to_dict() for i in self.items],
-        }
+class Identificador:
+    def __init__(self):
+        self.identificador = ""
+        self.complemento_uno = ""
+        self.complemento_dos = ""
+        self.complemento_tres = ""
+
+
+class Incrementable:
+    def __init__(self):
+        self.id = ""
+        self.concepto = ""
+        self.importe_me = ""
+        self.importe_mn = ""
+        self.pais = ""
 
 
 class Pedimento:
-    def __init__(self, numero="", tipo_cambio="0", fecha_pago=""):
-        self.numero = numero
-        self.tipo_cambio = Numeric.f(tipo_cambio)
-        self.fecha_pago = DateUtil.parse(fecha_pago)
+    def __init__(self):
+        self.id_pedimento = ""
+        self.numero_pedimento = ""
+        self.numero_completo = ""
+        self.tipo_de_cambio = ""
+        self.valor_aduana = ""
+        self.precio_pagado_valor_comecrial = ""
 
-        self.clientes = []
+        self.cliente = Cliente()
+
         self.facturas = []
         self.fracciones = []
-
-    def add_cliente(self, cliente):
-        self.clientes.append(cliente)
-
-    def add_factura(self, factura):
-        self.facturas.append(factura)
-
-    def add_fraccion(self, fraccion):
-        self.fracciones.append(fraccion)
-
-    def to_dict(self):
-        return {
-            "numerode_pedimento_completo": self.numero,
-            "tipo_de_cambio": self.tipo_cambio,
-            "fecha_de_pago": str(self.fecha_pago) if self.fecha_pago else "",
-            "clientes": [c.to_dict() for c in self.clientes],
-            "facturas": [f.to_dict() for f in self.facturas],
-            "fracciones": [fr.to_dict() for fr in self.fracciones],
-        }
+        self.identificadores = []
+        self.incrementables = []
+        self.contribuciones_generales = []
