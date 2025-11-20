@@ -2,7 +2,7 @@ from builder import PedimentoBuilder
 import pandas as pd
 from copy import deepcopy
 
-file_name = '5004580'
+file_name = '5004476'
 xml_file = f"Pedimentos/{file_name}.xml"
 
 builder = (
@@ -138,7 +138,7 @@ for item in items_raw:
             if key not in [
                 "codigo", "cantidad", "valor_aduana",
                 "precio_unitario", "precio_final",
-                "tipo_de_cambio", "dta"
+                "tipo_de_cambio", "dta","contribuciones_fraccion",'IVA','IGI/IGE','CC'
             ]:
                 if isinstance(value, (int, float)):
                     agrupado[codigo][key] = agrupado[codigo].get(key, 0) + value
@@ -152,7 +152,6 @@ items_final = []
 print("ITEMS AGRUPADOS ======================")
 
 for codigo, vals in agrupado.items():
-
     cantidad = vals.get("cantidad", 0)
     va = vals.get("valor_aduana", 0)
     dta = vals.get("dta", 0)
@@ -175,7 +174,7 @@ for codigo, vals in agrupado.items():
 # EXPORTAR
 # ==========================================
 df_items = pd.DataFrame(items_final)
-df_items.to_excel(f"Files Pedimentos/Costo{file_name}.xlsx", index=False)
+df_items.to_excel(f"Files Pedimentos/Costo {file_name}.xlsx", index=False)
 
 print("=================================")
 print("Pedimento:", pedimento.numero_completo)
