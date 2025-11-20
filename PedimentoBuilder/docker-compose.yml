@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  pedimento-api:
+    container_name: pedimento-api
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5006:5000"
+    volumes:
+      - ./Pedimentos:/app/Pedimentos                    # Montar directorio de pedimentos
+      - ./temp_uploads:/app/temp_uploads               # Montar directorio temporal
+      - ./logs:/app/logs                               # Montar directorio de logs
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
