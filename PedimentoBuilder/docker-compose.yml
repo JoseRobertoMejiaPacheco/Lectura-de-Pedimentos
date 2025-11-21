@@ -11,7 +11,8 @@ services:
     volumes:
       - ./Pedimentos:/app/Pedimentos                    # Montar directorio de pedimentos
       - ./temp_uploads:/app/temp_uploads               # Montar directorio temporal
-      - ./logs:/app/logs                               # Montar directorio de logs
+      - ./logs:/app/logs
+      - ./templates:/app/templates # Montar directorio de logs
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0

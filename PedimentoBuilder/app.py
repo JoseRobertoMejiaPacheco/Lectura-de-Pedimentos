@@ -1,15 +1,22 @@
-from flask import Flask, request, jsonify, send_file
-from builder import PedimentoBuilder
+from flask import Flask, request, jsonify, send_file, render_template
+from flask_cors import CORS
 import pandas as pd
-from copy import deepcopy
 import io
 import logging
+import os
+import json
 from typing import Dict, List, Any
 
+# Importaciones de tu proyecto existente
+from builder import PedimentoBuilder
+from domain import Pedimento
+from copy import deepcopy
+
 app = Flask(__name__)
+CORS(app)
 logging.basicConfig(level=logging.INFO)
 
-# Mapeos de impuestos
+# Mapeos de impuestos (los que ya tenías)
 MAP_CLAVE_IMPUESTO = {
     "6": "IGI/IGE",
     "3": "IVA",
@@ -23,35 +30,27 @@ MAP_CLAVE_IMPUESTO_GENERAL = {
 }
 
 class PedimentoProcessor:
-    """Clase para procesar pedimentos y calcular costos"""
+    """Clase para procesar pedimentos - Manteniendo tu lógica original"""
     
     def __init__(self):
         self.pedimento = None
         self.contrib_gen_keys = {}
         self.contrib_gen_total = 0
         
-    def load_pedimento(self, xml_content: str = None, xml_file_path: str = None):
-        """Carga el pedimento desde XML content o archivo"""
+    def load_pedimento(self, xml_file_path: str):
+        """Carga el pedimento desde archivo XML"""
         try:
-            if xml_content:
-                # Si necesitas procesar contenido XML directamente
-                # Aquí deberías adaptar según cómo funcione tu builder
-                raise NotImplementedError("Procesamiento directo de XML content no implementado")
-            elif xml_file_path:
-                builder = (
-                    PedimentoBuilder(xml_file_path)
-                    .build_header()
-                    .build_cliente()
-                    .build_facturas()
-                    .build_fracciones()
-                    .build_identificadores()
-                    .build_incrementables()
-                    .build_contribuciones_generales()
-                )
-                self.pedimento = builder.build()
-            else:
-                raise ValueError("Se requiere xml_content o xml_file_path")
-                
+            builder = (
+                PedimentoBuilder(xml_file_path)
+                .build_header()
+                .build_cliente()
+                .build_facturas()
+                .build_fracciones()
+                .build_identificadores()
+                .build_incrementables()
+                .build_contribuciones_generales()
+            )
+            self.pedimento = builder.build()
             return True
         except Exception as e:
             logging.error(f"Error cargando pedimento: {e}")
@@ -79,7 +78,7 @@ class PedimentoProcessor:
 
             self.contrib_gen_keys[clave] = self.contrib_gen_keys.get(clave, 0) + importe
     
-    def _procesar_items_raw(self) -> List[Dict[str, Any]]:
+    def _procesar_items_raw(self):
         """Procesa los items del pedimento y retorna lista de items raw"""
         items_raw = []
         cantidad_total_pedimento = 0
@@ -89,7 +88,6 @@ class PedimentoProcessor:
             contrib_frac_total = 0
             contrib_frac_keys = {}
 
-            # Procesar contribuciones por fracción
             for contribucion in fraccion.contribuciones:
                 tipo = (contribucion.tipo_de_tasa or "").strip()
                 if tipo == "0":
@@ -107,7 +105,6 @@ class PedimentoProcessor:
 
                 contrib_frac_keys[clave] = contrib_frac_keys.get(clave, 0) + importe
 
-            # Procesar items por fracción
             for item in fraccion.items:
                 cantidad = float(item.cantidad or 0)
                 cantidad_total_pedimento += cantidad
@@ -129,7 +126,7 @@ class PedimentoProcessor:
                 
         return items_raw, cantidad_total_pedimento
     
-    def _aplicar_prorrateo(self, items_raw: List[Dict], cantidad_total: float):
+    def _aplicar_prorrateo(self, items_raw, cantidad_total):
         """Aplica prorrateo de contribuciones generales a los items"""
         for vals in items_raw:
             cantidad_item = vals["cantidad"]
@@ -142,7 +139,7 @@ class PedimentoProcessor:
             
         return items_raw
     
-    def _agrupar_items(self, items_raw: List[Dict]) -> Dict[str, Dict]:
+    def _agrupar_items(self, items_raw):
         """Agrupa items por código"""
         agrupado = {}
 
@@ -167,7 +164,7 @@ class PedimentoProcessor:
                             
         return agrupado
     
-    def _calcular_costos_finales(self, items_agrupados: Dict[str, Dict]) -> List[Dict]:
+    def _calcular_costos_finales(self, items_agrupados):
         """Calcula costos finales para items agrupados"""
         items_final = []
         
@@ -189,28 +186,17 @@ class PedimentoProcessor:
             
         return items_final
     
-    def procesar_pedimento(self, xml_file_path: str) -> Dict[str, Any]:
+    def procesar_pedimento(self, xml_file_path: str):
         """Procesa completo el pedimento y retorna resultados"""
-        # Cargar pedimento
-        if not self.load_pedimento(xml_file_path=xml_file_path):
+        if not self.load_pedimento(xml_file_path):
             raise Exception("Error al cargar el pedimento")
         
-        # Procesar contribuciones generales
         self._procesar_contribuciones_generales()
-        
-        # Procesar items
         items_raw, cantidad_total = self._procesar_items_raw()
-        
-        # Aplicar prorrateo
         items_con_prorrateo = self._aplicar_prorrateo(items_raw, cantidad_total)
-        
-        # Agrupar items
         items_agrupados = self._agrupar_items(items_con_prorrateo)
-        
-        # Calcular costos finales
         items_final = self._calcular_costos_finales(items_agrupados)
         
-        # Información del pedimento
         info_pedimento = {
             "numero_completo": self.pedimento.numero_completo,
             "total_fracciones": len(self.pedimento.fracciones),
@@ -228,6 +214,15 @@ class PedimentoProcessor:
 # Instancia global del procesador
 processor = PedimentoProcessor()
 
+# ==========================================
+# RUTAS DE LA API
+# ==========================================
+
+@app.route('/')
+def index():
+    """Página principal con la interfaz web"""
+    return render_template('index.html')
+
 @app.route('/api/pedimento/procesar', methods=['POST'])
 def procesar_pedimento():
     """Endpoint para procesar un pedimento"""
@@ -239,12 +234,21 @@ def procesar_pedimento():
         if file.filename == '':
             return jsonify({"error": "Nombre de archivo vacío"}), 400
         
+        if not file.filename.endswith('.xml'):
+            return jsonify({"error": "El archivo debe ser XML"}), 400
+        
         # Guardar archivo temporalmente
-        file_path = f"temp_{file.filename}"
-        file.save(file_path)
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xml') as tmp_file:
+            file.save(tmp_file.name)
+            file_path = tmp_file.name
         
         # Procesar pedimento
         resultado = processor.procesar_pedimento(file_path)
+        
+        # Limpiar archivo temporal
+        os.unlink(file_path)
         
         return jsonify({
             "success": True,
@@ -262,39 +266,16 @@ def procesar_pedimento():
 def exportar_excel():
     """Endpoint para exportar resultados a Excel"""
     try:
-        if 'file' not in request.files:
-            return jsonify({"error": "No se proporcionó archivo"}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({"error": "Nombre de archivo vacío"}), 400
-        
-        # Guardar archivo temporalmente
-        file_path = f"temp_{file.filename}"
-        file.save(file_path)
-        
-        # Procesar pedimento
-        resultado = processor.procesar_pedimento(file_path)
+        data = request.get_json()
+        if not data or 'items' not in data:
+            return jsonify({"error": "Datos no proporcionados"}), 400
         
         # Crear DataFrame y Excel en memoria
-        df_items = pd.DataFrame(resultado["items"])
+        df_items = pd.DataFrame(data['items'])
         
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df_items.to_excel(writer, sheet_name='Items', index=False)
-            
-            # Crear hoja de resumen
-            resumen_data = {
-                'Campo': ['Número Completo', 'Total Fracciones', 'Total Facturas', 'Items Agrupados'],
-                'Valor': [
-                    resultado["pedimento"]["numero_completo"],
-                    resultado["pedimento"]["total_fracciones"],
-                    resultado["pedimento"]["total_facturas"],
-                    resultado["pedimento"]["items_agrupados"]
-                ]
-            }
-            df_resumen = pd.DataFrame(resumen_data)
-            df_resumen.to_excel(writer, sheet_name='Resumen', index=False)
         
         output.seek(0)
         
@@ -302,7 +283,7 @@ def exportar_excel():
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             as_attachment=True,
-            download_name=f'costo_pedimento_{resultado["pedimento"]["numero_completo"]}.xlsx'
+            download_name='costo_pedimento.xlsx'
         )
         
     except Exception as e:
@@ -318,4 +299,6 @@ def health_check():
     return jsonify({"status": "healthy", "service": "pedimento-processor"})
 
 if __name__ == '__main__':
+    # Crear directorio de templates si no existe
+    os.makedirs('templates', exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
